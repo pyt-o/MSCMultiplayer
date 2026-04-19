@@ -94,6 +94,16 @@ namespace MSCMultiplayer
                 playerBody = player.transform;
                 ModConsole.Log("[MSCMultiplayer] Znaleziono gracza.");
             }
+
+            // Jak jestesmy polaczeni i wchodzimy do gry — spawnjemy graczy juz na liscie
+            if (connected)
+            {
+                foreach (var p in playerList)
+                {
+                    if (p.Key != myID)
+                        SpawnRemotePlayer(p.Key, p.Value);
+                }
+            }
         }
 
         // ===================== UPDATE =====================
@@ -138,11 +148,28 @@ namespace MSCMultiplayer
                 }
             }
 
-            // T = czat
+            // Chat — T otwiera
             if (Input.GetKeyDown(KeyCode.T) && !showChat)
             {
                 showChat = true;
                 chatInput = "";
+            }
+
+            // Chat — Enter wysyla, Escape zamyka
+            if (showChat)
+            {
+                if (Input.GetKeyDown(KeyCode.Return))
+                {
+                    if (!string.IsNullOrEmpty(chatInput.Trim()))
+                        SendChat(chatInput.Trim());
+                    chatInput = "";
+                    showChat = false;
+                }
+                if (Input.GetKeyDown(KeyCode.Escape))
+                {
+                    chatInput = "";
+                    showChat = false;
+                }
             }
         }
 
@@ -200,7 +227,7 @@ namespace MSCMultiplayer
             rp.ID = id;
             rp.Nick = nick;
 
-            // Auto placeholder
+            // Auto placeholder — zolty szescian
             rp.CarObject = GameObject.CreatePrimitive(PrimitiveType.Cube);
             rp.CarObject.name = "MSCCar_" + id;
             rp.CarObject.transform.localScale = new Vector3(1.6f, 1.3f, 3.8f);
@@ -209,7 +236,7 @@ namespace MSCMultiplayer
             Collider cc = rp.CarObject.GetComponent<Collider>();
             if (cc != null) UnityEngine.Object.Destroy(cc);
 
-            // Cialo placeholder
+            // Cialo placeholder — niebieska kapsulka
             rp.BodyObject = GameObject.CreatePrimitive(PrimitiveType.Capsule);
             rp.BodyObject.name = "MSCBody_" + id;
             rp.BodyObject.transform.localScale = new Vector3(0.5f, 0.9f, 0.5f);
@@ -433,31 +460,30 @@ namespace MSCMultiplayer
         // ===================== GUI =====================
 
         private void OnGUIDraw()
-{
-    // M otwiera/zamyka menu
-    if (Event.current.type == EventType.KeyDown && Event.current.keyCode == KeyCode.M)
-        showMenu = !showMenu;
+        {
+            // M otwiera/zamyka menu
+            if (Event.current.type == EventType.KeyDown && Event.current.keyCode == KeyCode.M)
+                showMenu = !showMenu;
 
-    // Maly wskaznik w rogu tylko jak niepodlaczony
-    if (!connected)
-    {
-        GUI.color = new Color(1, 1, 1, 0.5f);
-        GUI.Label(new Rect(10, Screen.height - 25, 200, 20), "[M] MSC Multiplayer");
-        GUI.color = Color.white;
-    }
-    else
-    {
-        // Zielona kropka jak polaczony
-        GUI.color = Color.green;
-        GUI.Label(new Rect(10, Screen.height - 25, 200, 20), "● MSC Multiplayer [M]");
-        GUI.color = Color.white;
-    }
+            // Maly wskaznik w rogu
+            if (!connected)
+            {
+                GUI.color = new Color(1, 1, 1, 0.5f);
+                GUI.Label(new Rect(10, Screen.height - 25, 200, 20), "[M] MSC Multiplayer");
+                GUI.color = Color.white;
+            }
+            else
+            {
+                GUI.color = Color.green;
+                GUI.Label(new Rect(10, Screen.height - 25, 200, 20), "● MSC Multiplayer [M]");
+                GUI.color = Color.white;
+            }
 
-    if (showMenu)
-        menuRect = GUI.Window(9999, menuRect, DrawMenu, "MSC Multiplayer v" + Version);
+            if (showMenu)
+                menuRect = GUI.Window(9999, menuRect, DrawMenu, "MSC Multiplayer v" + Version);
 
-    DrawChat();
-}
+            DrawChat();
+        }
 
         private void DrawChat()
         {
@@ -465,6 +491,7 @@ namespace MSCMultiplayer
 
             float chatY = Screen.height - 200f;
 
+            // Wiadomosci
             if (chatMessages.Count > 0 && chatFadeTimer < 10f)
             {
                 int start = Mathf.Max(0, chatMessages.Count - 6);
@@ -476,27 +503,13 @@ namespace MSCMultiplayer
                 GUI.color = Color.white;
             }
 
+            // Pole do pisania
             if (showChat)
             {
+                GUI.Box(new Rect(8, chatY + 108f, 304f, 28f), "");
                 GUI.SetNextControlName("ChatInput");
                 chatInput = GUI.TextField(new Rect(10, chatY + 110f, 300f, 24f), chatInput, 100);
                 GUI.FocusControl("ChatInput");
-
-                if (Event.current.type == EventType.KeyDown)
-                {
-                    if (Event.current.keyCode == KeyCode.Return)
-                    {
-                        if (!string.IsNullOrEmpty(chatInput.Trim()))
-                            SendChat(chatInput.Trim());
-                        chatInput = "";
-                        showChat = false;
-                    }
-                    if (Event.current.keyCode == KeyCode.Escape)
-                    {
-                        chatInput = "";
-                        showChat = false;
-                    }
-                }
             }
             else if (connected)
             {
